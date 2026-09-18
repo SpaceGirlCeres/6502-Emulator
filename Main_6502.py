@@ -33,13 +33,16 @@ class CPU:
 
         self.SR = {'c': 1, 'z': 1, 'i': 1, 'd': 1, 'b': 1, 'u': 1, 'v': 1, 'n': 1} # Status Register/ Flags
 
+    def check_page(self):
+        pass
+
     def Mem_init(self):
         for i in range(len(self.mem)):
             self.mem[i] = byte(0x00)
 
     def Reset(self):
         self.PC = word(0xFFFC)
-        self.SP = word(0x0100)
+        self.SP = word(0x01FF)
 
         for i in self.REG.keys():
             self.REG[i] = byte(0x00)
@@ -71,10 +74,23 @@ class CPU:
         self.cycles -= 2
         return word(data)
 
+    def FetchWordFromStack(self, adjust):
+        data = word(self.mem[self.SP])
+        self.SP += 1
+
+        data |= word(self.mem[self.SP]) << 8
+        self.check_sp(-1 + adjust)
+        self.cycles -= 2
+        return word(data)
+
     def ReadByte(self, address):
         data = self.mem[address]
         self.cycles -= 1
         return byte(data)
+
+    def check_sp(self, adjust: int):
+        self.SP += adjust
+        self.SP.value = (self.SP.value % 0x0100) + 0x0100
 
     def LDR(self, register : str, mode):
         register = register.upper()
@@ -106,10 +122,16 @@ class CPU:
 
     def JSR(self):
         SubAddr = self.FetchWord()
-        self.Mem_WriteWord(self.PC-1, word(self.SP))
-        self.SP += 1
+        self.check_sp(2)
+        self.Mem_WriteWord(self.PC, word(self.SP))
         self.PC = SubAddr
         self.cycles -= 2
+
+    def RTS(self):
+        RetAddr = self.FetchWordFromStack(-2)
+        self.PC = RetAddr + 1
+        self.cycles -= 4
+
 
     def JMP(self, mode):
         match mode:
@@ -200,6 +222,8 @@ class CPU:
 
                 case 0x20: #JSR
                     self.JSR()
+                case 0x60: #RTS
+                    self.RTS()
 
                 case 0x4C:
                     self.JMP("ABS")

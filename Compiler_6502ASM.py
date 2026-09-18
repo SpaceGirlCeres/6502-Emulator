@@ -61,6 +61,8 @@ def compile():
 
         if data[key][0] == 'JSR':
             cpu.mem[int(key, 16)] = byte(0x20)
+        if data[key][0] == 'RTS':
+            cpu.mem[int(key, 16)] = byte(0x60)
 
         if data[key][0] == 'LDA':
             if "#$" in data[key][-1]:
